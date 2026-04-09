@@ -1,0 +1,228 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>棍铲大饭堂</title>
+<style>
+body{margin:0;font-family:Georgia,'Times New Roman',serif;background:#fdfdfd;color:#1a1a1a;line-height:1.6}
+.container{max-width:800px;margin:0 auto;padding:20px}
+.header{text-align:center;border-bottom:1px solid #ddd;padding-bottom:10px;margin-bottom:30px}
+.header h1{font-size:28px;font-weight:normal}
+.nav{text-align:center;margin-bottom:20px}
+.nav a{margin:0 10px;color:#666;text-decoration:none}
+.nav a:hover{text-decoration:underline}
+.box{background:#fff;border:1px solid #eee;border-radius:8px;padding:20px;margin-bottom:20px}
+.post{padding:12px 10px;border-bottom:1px solid #f1f1f1}
+.post:last-child{border-bottom:none}
+.post h4{margin:0 0 4px 0;font-size:16px;color:#222}
+.post .meta{font-size:13px;color:#666}
+.post a{text-decoration:none;color:#222}
+.post a:hover{text-decoration:underline}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;margin-bottom:4px;font-size:14px;color:#333}
+.form-group input,.form-group textarea{width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;font-family:inherit}
+.form-group textarea{resize:vertical;height:120px}
+.btn{background:#333;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer}
+.btn:hover{background:#000}
+.title{font-size:22px;margin-bottom:10px}
+.meta-info{color:#666;font-size:14px;margin-bottom:20px}
+.content{white-space:pre-line;line-height:1.8;margin-bottom:30px}
+.comment{padding:10px;background:#f7f7f7;border-radius:4px;margin-bottom:8px}
+.comment .user{font-weight:bold;font-size:14px}
+.comment .text{margin-top:4px;font-size:14px}
+.back{margin-bottom:20px}
+.back a{color:#666;text-decoration:none}
+.back a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>棍铲大饭堂</h1>
+    <p>支持所有形式投稿</p>
+  </div>
+
+  <div class="nav">
+    <a href="javascript:showHome()">首页</a>
+    <a href="javascript:showPostForm()">我要投稿</a>
+  </div>
+
+  <div id="view-home">
+    <div class="box">
+      <h3>最新</h3>
+      <div id="post-list"></div>
+    </div>
+  </div>
+
+  <div id="view-post" style="display:none">
+    <div class="back">
+      <a href="javascript:showHome()">← 返回首页</a>
+    </div>
+    <div class="box">
+      <h2 id="detail-title"></h2>
+      <div class="meta-info" id="detail-meta"></div>
+      <div class="content" id="detail-content"></div>
+    </div>
+
+    <div class="box">
+      <h4>评论区</h4>
+      <div id="comment-list"></div>
+      <div style="margin-top:20px">
+        <div class="form-group">
+          <label>昵称/署名</label>
+          <input id="c-name" type="text">
+        </div>
+        <div class="form-group">
+          <label>评论内容</label>
+          <textarea id="c-content"></textarea>
+        </div>
+        <button class="btn" onclick="postComment()">发表评论</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="view-write" style="display:none">
+    <div class="back">
+      <a href="javascript:showHome()">← 返回首页</a>
+    </div>
+    <div class="box">
+      <h3>发布新作品</h3>
+      <div class="form-group">
+        <label>署名（昵称）</label>
+        <input id="p-name" type="text">
+      </div>
+      <div class="form-group">
+        <label>标题</label>
+        <input id="p-title" type="text">
+      </div>
+      <div class="form-group">
+        <label>投稿内容</label>
+        <textarea id="p-content"></textarea>
+      </div>
+      <button class="btn" onclick="submitPost()">发布投稿</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "https://api.jsonbin.io/v3/b/67f75c1d8960c979a572e227";
+const KEY = "$2b$10$kXnH9gB0EJzZJzZJzZJzJZzJZJZJZJZJZJZJZJZJZJZJZJZJZ";
+
+let currentPostIndex = 0;
+
+async function getServerData() {
+  const res = await fetch(API, { headers: { "X-Master-Key": KEY } });
+  const data = await res.json();
+  return data.record || { posts: [] };
+}
+
+async function saveServerData(data) {
+  await fetch(API, {
+    method: "PUT",
+    headers: { "X-Master-Key": KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+}
+
+function showHome() {
+  document.getElementById("view-home").style.display = "block";
+  document.getElementById("view-post").style.display = "none";
+  document.getElementById("view-write").style.display = "none";
+  renderList();
+}
+
+function showPostForm() {
+  document.getElementById("view-home").style.display = "none";
+  document.getElementById("view-post").style.display = "none";
+  document.getElementById("view-write").style.display = "block";
+}
+
+async function openPost(idx) {
+  currentPostIndex = idx;
+  let data = await getServerData();
+  let p = data.posts[idx];
+  document.getElementById("detail-title").innerText = p.title;
+  document.getElementById("detail-meta").innerText = "作者：" + p.name + "　｜　时间：" + p.time;
+  document.getElementById("detail-content").innerText = p.content;
+  renderComments();
+  document.getElementById("view-home").style.display = "none";
+  document.getElementById("view-post").style.display = "block";
+  document.getElementById("view-write").style.display = "none";
+}
+
+async function renderList() {
+  let data = await getServerData();
+  let html = "";
+  if (data.posts.length === 0) {
+    html = "<div style='text-align:center;color:#666;padding:10px'>暂无投稿，快来发布第一个！</div>";
+  } else {
+    data.posts.forEach((p, i) => {
+      html += `
+        <div class="post">
+          <h4><a href="javascript:openPost(${i})">${p.title}</a></h4>
+          <div class="meta">${p.name} · ${p.time}</div>
+        </div>
+      `;
+    });
+  }
+  document.getElementById("post-list").innerHTML = html;
+}
+
+async function renderComments() {
+  let data = await getServerData();
+  let cs = data.posts[currentPostIndex].comments || [];
+  let html = "";
+  cs.forEach(c => {
+    html += `
+      <div class="comment">
+        <div class="user">${c.name}</div>
+        <div class="text">${c.content}</div>
+      </div>
+    `;
+  });
+  document.getElementById("comment-list").innerHTML = html;
+}
+
+async function submitPost() {
+  let name = document.getElementById("p-name").value.trim();
+  let title = document.getElementById("p-title").value.trim();
+  let content = document.getElementById("p-content").value.trim();
+  if (!name || !title || !content) {
+    alert("请填写完整：标题、内容");
+    return;
+  }
+  let data = await getServerData();
+  data.posts.unshift({
+    name, title, content,
+    time: new Date().toLocaleString(),
+    comments: []
+  });
+  await saveServerData(data);
+  document.getElementById("p-name").value = "";
+  document.getElementById("p-title").value = "";
+  document.getElementById("p-content").value = "";
+  alert("投稿成功！所有人都能吃到香香饭啦！");
+  showHome();
+}
+
+async function postComment() {
+  let name = document.getElementById("c-name").value.trim();
+  let content = document.getElementById("c-content").value.trim();
+  if (!name || !content) {
+    alert("请填写评论内容");
+    return;
+  }
+  let data = await getServerData();
+  data.posts[currentPostIndex].comments.push({ name, content });
+  await saveServerData(data);
+  document.getElementById("c-name").value = "";
+  document.getElementById("c-content").value = "";
+  renderComments();
+}
+
+renderList();
+</script>
+</body>
+</html>
