@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>棍铲大饭堂</title>
+<style>
+body{margin:0;font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;background:#f7f3ed;color:#222;line-height:1.7}
+.container{max-width:860px;margin:0 auto;padding:30px 20px}
+.header{text-align:center;background:transparent;padding:20px 0;margin-bottom:30px}
+.header h1{font-size:42px;font-weight:500;color:#222;margin:0;letter-spacing:2px}
+.header p{font-size:20px;color:#666;margin:8px 0 0;font-weight:300}
+.nav{text-align:center;background:transparent;padding:10px 0;margin-bottom:25px}
+.nav a{margin:0 18px;color:#222;text-decoration:none;font-size:18px}
+.nav a:hover{color:#555;text-decoration:underline}
+.box{background:#fff;border:none;border-radius:16px;padding:28px;margin-bottom:25px;box-shadow:0 2px 8px rgba(0,0,0,0.05)}
+.box h3{color:#222;padding-bottom:10px;margin-top:0;font-size:28px;font-weight:500}
+.post{padding:16px 0;border-bottom:1px solid #eee}
+.post:last-child{border-bottom:none}
+.post h4{margin:0 0 6px;font-size:20px;color:#222}
+.post h4 a{text-decoration:none;color:#222}
+.post h4 a:hover{color:#555;text-decoration:underline}
+.post .meta{font-size:14px;color:#888}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;margin-bottom:6px;font-size:16px;color:#444}
+.form-group input,.form-group textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;font-size:16px;background:#fff}
+.form-group textarea{height:160px}
+.btn{background:#333;color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:18px}
+.btn:hover{background:#555}
+.meta-info{color:#888;font-size:16px;margin-bottom:25px;padding-bottom:12px;border-bottom:1px solid #eee}
+.content{white-space:pre-line;line-height:1.9;margin-bottom:35px;color:#333;font-size:17px}
+.content img{max-width:100%;border-radius:8px;margin:15px 0}
+.content a{color:#333}
+.comment{background:#f9f9f7;padding:14px;border-radius:10px;margin-bottom:10px}
+.comment .user{font-weight:bold;color:#222}
+.back{margin-bottom:16px}
+.back a{color:#222;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>棍铲大饭堂</h1>
+<p>欢迎投稿！</p>
+</div>
+<div class="nav">
+<a href="javascript:home()">首页</a>
+<a href="javascript:write()">我要投稿</a>
+</div>
+<div id="v-home">
+<div class="box">
+<h3>最新投稿</h3>
+<div id="list"></div>
+</div>
+</div>
+<div id="v-post" style="display:none">
+<div class="back"><a href="javascript:home()">← 返回首页</a></div>
+<div class="box">
+<h2 id="p-title"></h2>
+<div id="p-meta" class="meta-info"></div>
+<div class="content" id="p-content"></div>
+</div>
+<div class="box">
+<h4>评论区</h4>
+<div id="comments"></div>
+<div style="margin-top:20px">
+<div class="form-group">
+<label>昵称</label>
+<input id="cc-name">
+</div>
+<div class="form-group">
+<label>评论</label>
+<textarea id="cc-content"></textarea>
+</div>
+<button class="btn" onclick="addComment()">发表评论</button>
+</div>
+</div>
+</div>
+<div id="v-write" style="display:none">
+<div class="back"><a href="javascript:home()">← 返回首页</a></div>
+<div class="box">
+<h3>发布新作品</h3>
+<div class="form-group">
+<label>署名</label>
+<input id="w-name">
+</div>
+<div class="form-group">
+<label>标题</label>
+<input id="w-title">
+</div>
+<div class="form-group">
+<label>内容</label>
+<textarea id="w-content"></textarea>
+</div>
+<button class="btn" onclick="post()">发布作品</button>
+</div>
+</div>
+</div>
+<script>
+const api = "https://api.jsonbin.io/v3/b/67f75c1d8960c979a572e227";
+const key = "$2b$10$kXnH9gB0EJzZJzZJzZJzJZzJZJZJZJZJZJZJZJZJZJZJZJZJZ";
+let now = 0;
+
+async function getData() {
+  let res = await fetch(api, { headers: { "X-Master-Key": key } });
+  let data = await res.json();
+  return data.record || { posts: [] };
+}
+
+async function saveData(data) {
+  await fetch(api, {
+    method: "PUT",
+    headers: { "X-Master-Key": key, "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+}
+
+function renderText(t) {
+  t = t.replace(/(https?:\/\/\S+?\.(png|jpg|jpeg|gif|webp))/gi, '<img src="$1">');
+  t = t.replace(/(https?:\/\/\S+)/gi, '<a href="$1" target="_blank">$1</a>');
+  return t;
+}
+
+async function renderList() {
+  let data = await getData();
+  let html = "";
+  if (!data.posts || data.posts.length === 0) {
+    document.getElementById("list").innerHTML = "<div style='text-align:center;color:#aaa;padding:20px'>暂无投稿</div>";
+    return;
+  }
+  data.posts.forEach((p, i) => {
+    html += `
+    <div class="post">
+      <h4><a href="javascript:open(${i})">${p.title}</a></h4>
+      <div class="meta">${p.name} · ${p.time}</div>
+    </div>`;
+  });
+  document.getElementById("list").innerHTML = html;
+}
+
+async function open(i) {
+  now = i;
+  let data = await getData();
+  let p = data.posts[i];
+  document.getElementById("p-title").innerText = p.title;
+  document.getElementById("p-meta").innerText = p.name + " · " + p.time;
+  document.getElementById("p-content").innerHTML = renderText(p.content);
+  let cHtml = "";
+  (p.comments || []).forEach(c => {
+    cHtml += `<div class="comment"><div class="user">${c.name}</div><div>${c.content}</div></div>`;
+  });
+  document.getElementById("comments").innerHTML = cHtml;
+  document.getElementById("v-home").style.display = "none";
+  document.getElementById("v-write").style.display = "none";
+  document.getElementById("v-post").style.display = "block";
+}
+
+async function post() {
+  let name = document.getElementById("w-name").value.trim();
+  let title = document.getElementById("w-title").value.trim();
+  let content = document.getElementById("w-content").value.trim();
+  if (!name || !title || !content) { alert("填写完整"); return; }
+  let data = await getData();
+  if (!data.posts) data.posts = [];
+  data.posts.unshift({
+    name, title, content,
+    time: new Date().toLocaleString(),
+    comments: []
+  });
+  await saveData(data);
+  alert("发布成功！");
+  home();
+}
+
+async function addComment() {
+  let name = document.getElementById("cc-name").value.trim();
+  let content = document.getElementById("cc-content").value.trim();
+  if (!name || !content) { alert("填写完整"); return; }
+  let data = await getData();
+  if (!data.posts[now].comments) data.posts[now].comments = [];
+  data.posts[now].comments.push({ name, content });
+  await saveData(data);
+  open(now);
+}
+
+function home() {
+  document.getElementById("v-home").style.display = "block";
+  document.getElementById("v-post").style.display = "none";
+  document.getElementById("v-write").style.display = "none";
+  renderList();
+}
+
+function write() {
+  document.getElementById("v-home").style.display = "none";
+  document.getElementById("v-post").style.display = "none";
+  document.getElementById("v-write").style.display = "block";
+}
+
+home();
+</script>
+</body>
+</html>
