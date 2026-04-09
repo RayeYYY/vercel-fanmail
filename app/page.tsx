@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { put } from '@vercel/blob';
-import { list } from '@vercel/blob';
+import { useState, useEffect, useRef } from 'react';
+import { put, list } from '@vercel/blob';
 
 export default function Home() {
   const [files, setFiles] = useState<any[]>([]);
@@ -36,8 +35,8 @@ export default function Home() {
     }
   };
 
-  // 初始化加载
-  useState(() => {
+  // 用 useEffect 初始化加载，替代错误的 useState 调用
+  useEffect(() => {
     loadFiles();
   }, []);
 
